@@ -1,0 +1,49 @@
+# nginx proxy address - http://172.17.0.1:8085
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "5m"
+    max-file: "1"
+
+services:
+  kutt:
+    image: kutt/kutt:latest
+    container_name: kutt-app
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - kutt
+    ports:
+      - "8085:3000"
+    environment:
+      TZ: ${TZ:-America/New_York}
+    volumes:
+      - ./rootfs/data/kutt:/data
+      - ./rootfs/config/kutt:/config
+    depends_on:
+      - kutt-db
+
+  kutt-db:
+    image: postgres:16-alpine
+    container_name: kutt-db
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - kutt
+    environment:
+      TZ: ${TZ:-America/New_York}
+      POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-kutt}
+      POSTGRES_USER: ${DB_USER_NAME:-kutt}
+      POSTGRES_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
+    volumes:
+      - ./rootfs/db/postgres/kutt:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  kutt:
+    external: false
