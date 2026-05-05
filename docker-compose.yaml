@@ -19,8 +19,8 @@ services:
     environment:
       TZ: ${TZ:-America/New_York}
     volumes:
-      - ./rootfs/data/kutt:/data
-      - ./rootfs/config/kutt:/config
+      - ./volumes/data/kutt:/data
+      - ./volumes/config/kutt:/config
     depends_on:
       - kutt-db
 
@@ -37,7 +37,7 @@ services:
       POSTGRES_USER: ${DB_USER_NAME:-kutt}
       POSTGRES_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
     volumes:
-      - ./rootfs/data/db/postgres/kutt:/var/lib/postgresql/data
+      - ./volumes/data/db/postgres/kutt:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 30s
