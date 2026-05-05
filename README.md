@@ -50,9 +50,9 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/data/kutt` - Data storage
-- `./rootfs/config/kutt` - Data storage
-- `./rootfs/data/db/postgres/kutt` - Data storage
+- `./volumes/data/kutt` - Data storage
+- `./volumes/config/kutt` - Data storage
+- `./volumes/data/db/postgres/kutt` - Data storage
 
 ## 🔐 Security
 
