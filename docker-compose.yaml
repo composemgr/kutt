@@ -1,5 +1,6 @@
 # nginx proxy address - http://172.17.0.1:8085
 
+name: kutt
 x-logging: &default-logging
   driver: json-file
   options:
@@ -9,25 +10,55 @@ x-logging: &default-logging
 services:
   kutt:
     image: kutt/kutt:latest
+    pull_policy: always
     container_name: kutt-app
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - kutt
     ports:
-      - "8085:3000"
+      - "172.17.0.1:8085:3000"
     environment:
       TZ: ${TZ:-America/New_York}
+      SITE_NAME: ${APP_ORG_NAME:-Kutt}
+      DEFAULT_DOMAIN: ${BASE_DOMAIN_NAME:-example.com}
+      LINK_LENGTH: 6
+      DISALLOW_REGISTRATION: false
+      DISALLOW_ANONYMOUS_LINKS: false
+      USER_LIMIT_PER_DAY: 50
+      NON_USER_COOLDOWN: 0
+      DEFAULT_MAX_STATS_PER_LINK: 5000
+      CUSTOM_DOMAIN_USE_HTTPS: false
+      DB_HOST: kutt-db
+      DB_PORT: 5432
+      DB_NAME: ${DB_CREATE_DATABASE_NAME:-kutt}
+      DB_USER: ${DB_USER_NAME:-kutt}
+      DB_PASSWORD: ${DB_USER_PASS:-changeme_db_password}
+      REDIS_HOST: kutt-redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${APP_SECRET_KEY:-changeme_secret_key_min_32_chars}
+      ADMIN_EMAILS: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
+      MAIL_HOST: ${EMAIL_SERVER_HOST:-172.17.0.1}
+      MAIL_PORT: ${EMAIL_SERVER_PORT:-587}
+      MAIL_SECURE: false
+      MAIL_USER: ${EMAIL_SERVER_USER:-}
+      MAIL_PASSWORD: ${EMAIL_SERVER_PASS:-}
+      MAIL_FROM: ${EMAIL_SERVER_MAIL_FROM:-no-reply@example.com}
+      REPORT_EMAIL: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
+      CONTACT_EMAIL: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
     volumes:
       - ./volumes/data/kutt:/data
-      - ./volumes/config/kutt:/config
     depends_on:
-      - kutt-db
+      kutt-db:
+        condition: service_healthy
+      kutt-redis:
+        condition: service_started
 
   kutt-db:
-    image: postgres:16-alpine
+    image: postgres:latest
+    pull_policy: always
     container_name: kutt-db
-    restart: unless-stopped
+    restart: always
     logging: *default-logging
     networks:
       - kutt
@@ -44,6 +75,23 @@ services:
       timeout: 10s
       retries: 3
 
+  kutt-redis:
+    image: redis:alpine
+    pull_policy: always
+    container_name: kutt-redis
+    restart: always
+    logging: *default-logging
+    networks:
+      - kutt
+    volumes:
+      - ./volumes/data/db/redis/kutt:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 networks:
   kutt:
+    name: kutt
     external: false
