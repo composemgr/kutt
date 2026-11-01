@@ -1,0 +1,115 @@
+name: kutt
+x-logging: &default-logging
+  options:
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
+
+services:
+  app:
+    image: kutt/kutt:latest
+    container_name: kutt-app
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: kutt-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
+      SITE_NAME: ${APP_ORG_NAME:-Kutt}
+      DEFAULT_DOMAIN: ${BASE_DOMAIN_NAME:-example.com}
+      LINK_LENGTH: 6
+      DISALLOW_REGISTRATION: 'false'
+      DISALLOW_ANONYMOUS_LINKS: 'false'
+      USER_LIMIT_PER_DAY: 50
+      NON_USER_COOLDOWN: 0
+      DEFAULT_MAX_STATS_PER_LINK: 5000
+      CUSTOM_DOMAIN_USE_HTTPS: 'false'
+      DB_CLIENT: pg
+      DB_HOST: kutt-db
+      DB_PORT: 5432
+      DB_NAME: ${DB_CREATE_DATABASE_NAME:-kutt}
+      DB_USER: ${DB_USER_NAME:-kutt}
+      DB_PASSWORD: ${DB_USER_PASS:-replace-with-a-random-password}
+      REDIS_ENABLED: 'true'
+      REDIS_HOST: kutt-redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${APP_SECRET_KEY:-replace-with-a-random-16-byte-hex-string}
+      ADMIN_EMAILS: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
+      MAIL_ENABLED: 'true'
+      MAIL_HOST: ${EMAIL_SERVER_HOST:-172.17.0.1}
+      MAIL_PORT: ${EMAIL_SERVER_PORT:-587}
+      MAIL_SECURE: 'false'
+      MAIL_USER: ${EMAIL_SERVER_LOGIN_NAME:-}
+      MAIL_PASSWORD: ${EMAIL_SERVER_LOGIN_PASS:-}
+      MAIL_FROM: ${EMAIL_SERVER_MAIL_FROM:-no-reply@example.com}
+      REPORT_EMAIL: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
+      CONTACT_EMAIL: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
+    volumes:
+      - './volumes/data/kutt:/data:z'
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    labels:
+      - 'cloudflare.enable=true'
+      - 'cloudflare.service=http://kutt-app:3000'
+      - 'cloudflare.hostname=${BASE_HOST_NAME:-$HOSTNAME}'
+    networks:
+      - kutt
+      - cloudflare
+
+  db:
+    image: postgres:alpine
+    container_name: kutt-db
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: kutt-db
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: kutt-db
+      POSTGRES_DB: ${DB_CREATE_DATABASE_NAME:-kutt}
+      POSTGRES_USER: ${DB_USER_NAME:-kutt}
+      POSTGRES_PASSWORD: ${DB_USER_PASS:-replace-with-a-random-password}
+    volumes:
+      - './volumes/db/postgres/kutt:/var/lib/postgresql/data:z'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER_NAME:-kutt} -d ${DB_CREATE_DATABASE_NAME:-kutt}']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - kutt
+
+  redis:
+    image: redis:alpine
+    container_name: kutt-redis
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: kutt-redis
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: kutt-redis
+    volumes:
+      - './volumes/db/redis/kutt:/data:z'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - kutt
+
+networks:
+  kutt:
+    name: kutt
+    external: false
+  cloudflare:
+    external: true
