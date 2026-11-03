@@ -49,6 +49,12 @@ services:
       MAIL_FROM: ${EMAIL_SERVER_MAIL_FROM:-no-reply@example.com}
       REPORT_EMAIL: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
       CONTACT_EMAIL: ${APP_ADMIN_USER:-admin}@${BASE_DOMAIN_NAME:-example.com}
+    healthcheck:
+      test: ['CMD', 'nc', '-z', '127.0.0.1', '3000']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     ports:
       - '172.17.0.1:64229:3000'
     volumes:
